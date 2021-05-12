@@ -4,39 +4,44 @@
     [ajax.core :refer [POST]]
     [reagent-forms.core :refer [bind-fields init-field value-of]]))
 
+(def valid-value-description
+  "Value must be a non-empty string containing only lowercase letters!")
+
 (defn invalid? [s]
   (nil? (re-matches #"^[a-z]+$" s)))
 
-(defn row [label input]
+(defn row [label-node content-node]
   [:div.row
-   [:div.col-md-2 [:label label]]
-   [:div.col-md-5 input]])
+   [:div.col-md-2 label-node]
+   [:div.col-md-10 content-node]])
+
+(defn row-labeled [label content]
+  (row [:label label] content))
+
+(defn row-unlabeled [content]
+  (row nil content))
 
 (defn input [label type id]
-  (row label [:input.form-control {:field type :id id}]))
+  (row-labeled
+    label
+    [:input.form-control {:field type :id id :autocomplete "off"}]))
+
+(defn input-validation [node]
+  (row-unlabeled node))
+
+(defn validation-node [id validator msg]
+  [:div.alert.alert-success
+   {:field :alert :id id :event validator}
+   msg])
 
 (def form-template
   [:div
-   (input "scramble" :text :scramble)
-   [:div.row
-    [:div.col-md-2]
-    [:div.col-md-5
-     [:div.alert.alert-success
-      {:field :alert :id :scramble :event invalid?}
-      "scramble value is invalid!"]
-     ;[:div.alert.alert-danger
-     ; {:field :alert :id :errors.scramble}]
-     ]]
-   (input "target" :text :target)
-   [:div.row
-    [:div.col-md-2]
-    [:div.col-md-5
-     [:div.alert.alert-success
-      {:field :alert :id :target :event invalid?}
-      "target value is invalid!"]
-     ;[:div.alert.alert-danger
-     ; {:field :alert :id :errors.target}]
-     ]]])
+   (input "Scramble" :text :scramble)
+   (input-validation
+     (validation-node :scramble invalid? valid-value-description))
+   (input "Target word" :text :target)
+   (input-validation
+     (validation-node :target invalid? valid-value-description))])
 
 (defn page []
   (let [doc (reagent/atom {:scramble ""
@@ -47,44 +52,15 @@
        [bind-fields form-template doc]
        [:button.btn.btn-default
         {:on-click
-         (fn display-errors [_]
-           (do (if (invalid? (get-in @doc [:scramble]))
-                 (swap! doc assoc-in [:errors :scramble] "scramble value is not valid"))
-               (if (invalid? (get-in @doc [:target]))
-                 (swap! doc assoc-in [:errors :target] "target valur is not valid"))))}
-        "save"]])))
-
-
-(defn scramble-input [name form-data]
-  [:input {:type      "text"
-           :name      name
-           :on-change #(swap! form-data assoc name (-> % .-target .-value))}])
-
-(defn request-button [label form-data]
-  (let [resp (reagent/atom "RESP-VLKO")]
-    [:div
-     [:button
-      {:on-click
-       (fn [_]
-         (.log js/console @resp)
-         #_(POST
-             "http://localhost:4000"
-             {:params          {:target (:target @form-data) :scramble (:scramble @form-data)}
-              :response-format :json
-              :handler         (fn [response]
-                                 (reset! resp (str response))
-                                 )})
-
-         )}
-      label]
-     [:p @resp]]))
-
-(defn scramble-form []
-  (let [form-data (reagent/atom {:target "" :scramble ""})]
-    (fn []
-      [:form {:on-submit (fn [e] (.preventDefault e))}
-       [scramble-input :scramble form-data]
-       [scramble-input :target form-data]
-       [request-button "click"]
-       [:p (:resp @form-data)]])))
-
+         (fn [_]
+           (when
+             (not-any? #(invalid? (% @doc)) [:scramble :target])
+             (POST
+               "http://localhost:4000"
+               {:params          {:target   (:target @doc)
+                                  :scramble (:scramble @doc)}
+                :response-format :json
+                :handler         (fn [response] (js/alert (str response)))})
+             ))
+         }
+        "Scrambled?"]])))
