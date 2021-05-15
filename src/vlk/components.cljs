@@ -21,12 +21,12 @@
 (defn row-unlabeled [content]
   (row nil content))
 
-(defn input [label type id]
+(defn row-input [label type id]
   (row-labeled
     label
     [:input.form-control {:field type :id id :autocomplete "off"}]))
 
-(defn input-validation [node]
+(defn row-input-validation [node]
   (row-unlabeled node))
 
 (defn validation-node [id validator msg]
@@ -36,31 +36,44 @@
 
 (def form-template
   [:div
-   (input "Scramble" :text :scramble)
-   (input-validation
+   (row-input "Scramble" :text :scramble)
+   (row-input-validation
      (validation-node :scramble invalid? valid-value-description))
-   (input "Target word" :text :target)
-   (input-validation
+   (row-input "Target word" :text :target)
+   (row-input-validation
      (validation-node :target invalid? valid-value-description))])
+
+(defn response-row [doc]
+  (let [response (:response @doc)]
+    ((when response
+       [:div
+        [:hr]
+        [:div.row
+         [:div.col
+          response]]]))))
 
 (defn page []
   (let [doc (reagent/atom {:scramble ""
-                           :target   ""})]
+                           :target   ""
+                           :response "no response"})]
     (fn []
       [:div
        [:div.page-header [:h1 "Scramblies Form"]]
        [bind-fields form-template doc]
-       [:button.btn.btn-default
-        {:on-click
-         (fn [_]
-           (when
-             (not-any? #(invalid? (% @doc)) [:scramble :target])
-             (POST
-               "http://localhost:4000"
-               {:params          {:target   (:target @doc)
-                                  :scramble (:scramble @doc)}
-                :response-format :json
-                :handler         (fn [response] (js/alert (str response)))})
-             ))
-         }
-        "Scrambled?"]])))
+       [:div.row
+        [:div.col-md-12
+         [:button.btn.btn-default
+          {:on-click
+           (fn [_]
+             (when
+               (not-any? #(invalid? (% @doc)) [:scramble :target])
+               (POST
+                 "http://localhost:4000"
+                 {:params          {:target   (:target @doc)
+                                    :scramble (:scramble @doc)}
+                  :response-format :json
+                  :handler         (fn [response] (js/alert (str response)))})
+               ))
+           }
+          "Scrambled?"]]]
+       ])))
