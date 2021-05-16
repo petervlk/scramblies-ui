@@ -52,28 +52,51 @@
          [:div.col
           response]]]))))
 
+(def clean-form-data
+  {:scramble ""
+   :target   ""
+   :response ""})
+
+(def response-form-data
+  {:scramble ""
+   :target   ""
+   :response "vlko was here!"})
+
+(def doc (reagent/atom clean-form-data))
+
+(defn page-form [doc]
+  [:div
+   [:div.page-header [:h1 "Scramblies Form"]]
+   [bind-fields form-template doc]
+   [:div.row
+    [:div.col-md-12
+     [:button.btn.btn-default
+      {:on-click
+       (fn [_]
+         (when
+           (not-any? #(invalid? (% @doc)) [:scramble :target])
+           (POST
+               "http://localhost:4000"
+               {:params          {:target   (:target @doc)
+                                  :scramble (:scramble @doc)}
+                :response-format :json
+                :handler         (fn [response]
+                                   (swap! doc assoc :response (str response))
+                                   )})))}
+      "Scrambled?"]]]])
+
+(defn page-result [doc]
+  [:div
+   [:div.page-header [:h1 "Scramblies Result"]]
+   [row-labeled "Result:" (:response @doc)]
+   [:div.row
+    [:div.col-md-12
+     [:button.btn.btn-default
+      {:on-click
+       (fn [_]
+         (reset! doc clean-form-data))}
+      "Back to form"]]]])
+
+
 (defn page []
-  (let [doc (reagent/atom {:scramble ""
-                           :target   ""
-                           :response "no response"})]
-    (fn []
-      [:div
-       [:div.page-header [:h1 "Scramblies Form"]]
-       [bind-fields form-template doc]
-       [:div.row
-        [:div.col-md-12
-         [:button.btn.btn-default
-          {:on-click
-           (fn [_]
-             (when
-               (not-any? #(invalid? (% @doc)) [:scramble :target])
-               (POST
-                 "http://localhost:4000"
-                 {:params          {:target   (:target @doc)
-                                    :scramble (:scramble @doc)}
-                  :response-format :json
-                  :handler         (fn [response] (js/alert (str response)))})
-               ))
-           }
-          "Scrambled?"]]]
-       ])))
+  (if (= "" (:response @doc)) (page-form doc) (page-result doc)))
