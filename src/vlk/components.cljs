@@ -10,6 +10,45 @@
 (defn invalid? [s]
   (nil? (re-matches #"^[a-z]+$" s)))
 
+(def clean-form-data
+  {:scramble ""
+   :target   ""
+   :response ""})
+
+(def doc (reagent/atom clean-form-data))
+
+(defn set-data-handler [doc data]
+  (fn [_] (reset! doc data)))
+
+(defn set-response-value-handler [doc]
+  (fn [response] (swap! doc assoc :response (str response))))
+
+(defn request-params [doc]
+  {:target   (:target @doc)
+   :scramble (:scramble @doc)})
+
+(defn scramble-response [doc]
+  (:response @doc))
+
+(defn no-response? [doc]
+  (empty? (scramble-response doc)))
+
+(defn valid-request-data? [request-data]
+  (not-any? invalid? (vals request-data)))
+
+(defn send-request [request-params response-handler]
+  (POST
+    "http://localhost:4000"
+    {:params          request-params
+     :response-format :json
+     :handler         response-handler}))
+
+(defn validate-and-send-request [doc]
+  (let [request-data (request-params doc)]
+    (fn [_]
+     (when (valid-request-data? request-data)
+       (send-request request-data (set-response-value-handler doc))))))
+
 (defn row [label-node content-node]
   [:div.row
    [:div.col-md-2 label-node]
@@ -43,27 +82,6 @@
    (row-input-validation
      (validation-node :target invalid? valid-value-description))])
 
-(defn response-row [doc]
-  (let [response (:response @doc)]
-    ((when response
-       [:div
-        [:hr]
-        [:div.row
-         [:div.col
-          response]]]))))
-
-(def clean-form-data
-  {:scramble ""
-   :target   ""
-   :response ""})
-
-(def response-form-data
-  {:scramble ""
-   :target   ""
-   :response "vlko was here!"})
-
-(def doc (reagent/atom clean-form-data))
-
 (defn page-form [doc]
   [:div
    [:div.page-header [:h1 "Scramblies Form"]]
@@ -71,32 +89,20 @@
    [:div.row
     [:div.col-md-12
      [:button.btn.btn-default
-      {:on-click
-       (fn [_]
-         (when
-           (not-any? #(invalid? (% @doc)) [:scramble :target])
-           (POST
-               "http://localhost:4000"
-               {:params          {:target   (:target @doc)
-                                  :scramble (:scramble @doc)}
-                :response-format :json
-                :handler         (fn [response]
-                                   (swap! doc assoc :response (str response))
-                                   )})))}
+      {:on-click (validate-and-send-request doc)}
       "Scrambled?"]]]])
 
 (defn page-result [doc]
   [:div
    [:div.page-header [:h1 "Scramblies Result"]]
-   [row-labeled "Result:" (:response @doc)]
+   [row-labeled "Result:" (scramble-response doc)]
    [:div.row
     [:div.col-md-12
      [:button.btn.btn-default
-      {:on-click
-       (fn [_]
-         (reset! doc clean-form-data))}
+      {:on-click (set-data-handler doc clean-form-data)}
       "Back to form"]]]])
 
-
 (defn page []
-  (if (= "" (:response @doc)) (page-form doc) (page-result doc)))
+  (if (no-response? doc)
+    (page-form doc)
+    (page-result doc)))
