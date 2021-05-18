@@ -36,18 +36,24 @@
 (defn valid-request-data? [request-data]
   (not-any? invalid? (vals request-data)))
 
+(defn error-handler [{:keys [status status-text]}]
+  (js/alert (str "Response status: " status "; "
+                 "Response value: " status-text)))
+
 (defn send-request [request-params response-handler]
   (POST
     "http://localhost:4000"
     {:params          request-params
      :response-format :json
-     :handler         response-handler}))
+     :handler         response-handler
+     :error-handler   error-handler
+     :timeout         2000}))
 
 (defn validate-and-send-request [doc]
   (let [request-data (request-params doc)]
     (fn [_]
-     (when (valid-request-data? request-data)
-       (send-request request-data (set-response-value-handler doc))))))
+      (when (valid-request-data? request-data)
+        (send-request request-data (set-response-value-handler doc))))))
 
 (defn row [label-node content-node]
   [:div.row
