@@ -13,18 +13,17 @@
   (js/alert (str "Response status: " status "; "
                  "Response value: " status-text)))
 
-(defn send-request [request-data response-handler]
-  ; TODO - refactor
+(defn send-request [server-config request-data response-handler]
   (POST
-    "http://localhost:4000"
+    (:service-url server-config)
     {:params          request-data
      :response-format :json
      :handler         response-handler
      :error-handler   error-handler
-     :timeout         2000}))
+     :timeout         (:req-timeout server-config)}))
 
-(defn valid-request-sender [request-data response-handler]
+(defn valid-request-sender [server-config request-data response-handler]
   (fn [_]
     (when (v/valid-request-data? request-data)
-      (send-request request-data response-handler))))
+      (send-request server-config request-data response-handler))))
 

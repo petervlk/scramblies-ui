@@ -3,7 +3,8 @@
     [reagent-forms.core :refer [bind-fields init-field value-of]]
     [vlk.validator :as v]
     [vlk.handler :as h]
-    [vlk.state :as state :refer [doc]]))
+    [vlk.state :as state :refer [doc]]
+    [vlk.config :as c]))
 
 (defn row [label-node content-node]
   [:div.row
@@ -46,6 +47,7 @@
     [:div.col-md-12
      [:button.btn.btn-default
       {:on-click (h/valid-request-sender
+                   c/config
                    (state/request-params doc)
                    (h/response-setter doc))}
       "Scrambled?"]]]])
