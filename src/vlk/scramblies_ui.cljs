@@ -2,13 +2,13 @@
   (:require
     [goog.dom :as gdom]
     [reagent.dom :as rdom]
-    [vlk.components]))
+    [vlk.page :refer [page]]))
 
 (defn get-app-element []
   (gdom/getElement "app"))
 
 (defn mount [el]
-  (rdom/render [vlk.components/page] el))
+  (rdom/render [vlk.page/page] el))
 
 (defn mount-app-element []
   (when-let [el (get-app-element)]
